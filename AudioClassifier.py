@@ -66,6 +66,8 @@ class AudioClassifier:
                     self.features_list.append(features)
                     self.labels.append("yes")  # yes for music
                     self.filenames.append(file_path)
+                    # Print formatted data
+                    print(f"{file}, {', '.join(f'{f:.6f}' for f in features)}, yes")
         
         # Process speech files
         speech_folder = os.path.join(SCRIPT_DIR, "speech")
@@ -77,6 +79,8 @@ class AudioClassifier:
                     self.features_list.append(features)
                     self.labels.append("no")   # no for speech
                     self.filenames.append(file_path)
+                    # Print formatted data
+                    print(f"{file}, {', '.join(f'{f:.6f}' for f in features)}, no")
 
     def train_model(self):
         """Train the SVM model using 2/3 of the data."""
@@ -191,8 +195,9 @@ class AudioPlayerGUI:
             
             # Display results
             for result in results:
+                filename = os.path.basename(result['filename'])  # Get just the filename
                 self.tree.insert("", "end", values=(
-                    result['filename'],
+                    filename,
                     "Music" if result['prediction'] == "yes" else "Speech",
                     "Music" if result['ground_truth'] == "yes" else "Speech"
                 ))
@@ -208,11 +213,26 @@ class AudioPlayerGUI:
             messagebox.showwarning("Warning", "Please select a file to play.")
             return
         
-        filename = self.tree.item(selected_item[0])['values'][0]
+        # Get the filename from the tree
+        displayed_filename = self.tree.item(selected_item[0])['values'][0]
+        
+        # Find the full path by checking both music and speech folders
+        music_folder = os.path.join(SCRIPT_DIR, "music")
+        speech_folder = os.path.join(SCRIPT_DIR, "speech")
+        
+        full_path = None
+        if os.path.exists(os.path.join(music_folder, displayed_filename)):
+            full_path = os.path.join(music_folder, displayed_filename)
+        elif os.path.exists(os.path.join(speech_folder, displayed_filename)):
+            full_path = os.path.join(speech_folder, displayed_filename)
+        
+        if not full_path:
+            messagebox.showerror("Error", "Could not find the selected file")
+            return
         
         def play_audio():
             try:
-                y, sr = librosa.load(filename)
+                y, sr = librosa.load(full_path)
                 self.playing = True
                 sd.play(y, sr)
                 sd.wait()
